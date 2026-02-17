@@ -1,0 +1,116 @@
+name: 🧪 Test Suite
+
+# Ejecutar en push y pull requests a cualquier rama
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  # ===================================
+  # Job 1: PHPUnit Tests (Backend PHP)
+  # ===================================
+  phpunit:
+    name: 🐘 PHPUnit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, json
+          coverage: none
+      
+      - name: 📦 Install Composer dependencies
+        working-directory: ./app
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      
+      - name: 🧪 Run PHPUnit tests
+        working-directory: ./app
+        run: ./vendor/bin/phpunit --testdox --colors=always
+
+  # ===================================
+  # Job 2: Vitest Tests (Frontend JS)
+  # ===================================
+  vitest:
+    name: ⚡ Vitest Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './app/package-lock.json'
+      
+      - name: 📦 Install npm dependencies
+        working-directory: ./app
+        run: npm ci
+      
+      - name: 🧪 Run Vitest tests
+        working-directory: ./app
+        run: npm test -- --run
+
+  # ===================================
+  # Job 3: Playwright Tests (E2E)
+  # ===================================
+  playwright:
+    name: 🎭 Playwright E2E Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🐳 Create .env file
+        run: |
+          echo "PASSWORD_SECRETA=test_secret_123" > .env
+      
+      - name: 🐳 Build and run Docker containers
+        run: docker-compose up --build --abort-on-container-exit --exit-code-from playwright
+      
+      - name: 📊 Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright/playwright-report/
+          retention-days: 7
+
+  # ===================================
+  # Job 4: Test Summary
+  # ===================================
+  test-summary:
+    name: ✅ Test Summary
+    runs-on: ubuntu-latest
+    needs: [phpunit, vitest, playwright]
+    if: always()
+    
+    steps:
+      - name: 📊 Check test results
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- PHPUnit: ${{ needs.phpunit.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Vitest: ${{ needs.vitest.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Playwright: ${{ needs.playwright.result }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.phpunit.result }}" != "success" ] || \
+             [ "${{ needs.vitest.result }}" != "success" ] || \
+             [ "${{ needs.playwright.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Some tests failed!**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **All tests passed!**" >> $GITHUB_STEP_SUMMARY
+          fi

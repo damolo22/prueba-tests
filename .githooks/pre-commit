@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Pre-commit hook: ejecuta tests antes de cada commit
+# Para instalar: cp .githooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+echo "🔍 Running pre-commit tests..."
+
+# Colores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Flag para rastrear si algún test falló
+FAILED=0
+
+# ===================================
+# PHPUnit Tests
+# ===================================
+echo ""
+echo "${YELLOW}🐘 Running PHPUnit tests...${NC}"
+cd app
+./vendor/bin/phpunit --testdox --colors=always
+
+if [ $? -ne 0 ]; then
+    echo "${RED}❌ PHPUnit tests failed!${NC}"
+    FAILED=1
+else
+    echo "${GREEN}✅ PHPUnit tests passed!${NC}"
+fi
+
+# ===================================
+# Vitest Tests
+# ===================================
+echo ""
+echo "${YELLOW}⚡ Running Vitest tests...${NC}"
+npm test -- --run
+
+if [ $? -ne 0 ]; then
+    echo "${RED}❌ Vitest tests failed!${NC}"
+    FAILED=1
+else
+    echo "${GREEN}✅ Vitest tests passed!${NC}"
+fi
+
+cd ..
+
+# ===================================
+# Resultado Final
+# ===================================
+echo ""
+if [ $FAILED -eq 1 ]; then
+    echo "${RED}╔════════════════════════════════════════╗${NC}"
+    echo "${RED}║  ❌ COMMIT ABORTED - TESTS FAILED  ❌ ║${NC}"
+    echo "${RED}╚════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "Fix the failing tests before committing."
+    echo "To skip this check (NOT RECOMMENDED), use: git commit --no-verify"
+    exit 1
+else
+    echo "${GREEN}╔════════════════════════════════════╗${NC}"
+    echo "${GREEN}║  ✅ ALL TESTS PASSED - READY! ✅   ║${NC}"
+    echo "${GREEN}╚════════════════════════════════════╝${NC}"
+    echo ""
+    exit 0
+fi

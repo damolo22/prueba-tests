@@ -1,0 +1,22 @@
+services:
+  playwright:
+    build: ./playwright
+    volumes:
+      - ./playwright:/app
+      - /app/node_modules
+    command: npx playwright test
+    ipc: host
+    env_file:
+      - .env
+    environment:
+      - BASE_URL=http://web
+    container_name: playwright-test
+  web:
+    image: php:8.2-apache
+    volumes:
+      - ./app:/var/www/html
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    container_name: playwright-web
