@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'):
     <?php
     else: ?>
     <div class="error" id="error-message">
-        <p>Access Denied: Wrong Password.</p>
+        <p>Access Denied: Wrong Password!.</p>
     </div>
     <?php
     endif;
